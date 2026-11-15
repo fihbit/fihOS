@@ -11,7 +11,7 @@
 	Icons: Lucide (ISC licence, https://lucide.dev).
 
 	local fihOS   = require(ReplicatedStorage.fihOS)
-	local Window  = fihOS:CreateWindow({ Title = "fihOS" })
+	local Window  = fihOS:CreateWindow()   -- the fihOS name and logo are fixed
 	local General = Window:AddTab({ Title = "General", Icon = "house" })
 	local Group   = General:AddSection("Behaviour")
 	Group:AddToggle({ Title = "Enabled", Default = true, Flag = "Enabled" })
@@ -26,6 +26,7 @@
 ]]
 
 local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local TextService = game:GetService("TextService")
@@ -33,15 +34,25 @@ local RunService = game:GetService("RunService")
 local HttpService = game:GetService("HttpService")
 local Workspace = game:GetService("Workspace")
 
-local Library = {
+-- fihOS branding. Fixed on purpose: scripts that use the library can't rename,
+-- re-logo or re-label it (there are no options for it, and the UI never reads
+-- these from anywhere a caller can reach).
+local BRAND = table.freeze({
 	Name = "fihOS",
+	Logo = "rbxassetid://140358159572499", -- 512px
+	LogoSmall = "rbxassetid://75289628303587", -- 64px, for the island, banners and footer
+	LogoMedium = "rbxassetid://136872781856598", -- 128px, for the morph
+})
+
+local Library = {
+	Name = BRAND.Name,
 	Version = "5.1.0",
 	Flags = {},
 	Windows = {},
 	Assets = {
-		Logo = "rbxassetid://140358159572499", -- 512px
-		LogoSmall = "rbxassetid://75289628303587", -- 64px, for the island, banners and footer
-		LogoMedium = "rbxassetid://136872781856598", -- 128px, for the morph
+		Logo = BRAND.Logo,
+		LogoSmall = BRAND.LogoSmall,
+		LogoMedium = BRAND.LogoMedium,
 		Icons = "rbxassetid://86952919489503", -- 48px icons
 		Icons32 = "rbxassetid://123429938630653",
 		Icons28 = "rbxassetid://87889325028358",
@@ -1003,7 +1014,7 @@ function Library:CreateWindow(options)
 
 	local self = setmetatable({
 		Options = options,
-		Title = options.Title or "fihOS",
+		Title = BRAND.Name, -- not configurable
 		Theme = Theme.new(options.Theme or options.Appearance or "Onyx", options.Accent, options.Colors),
 		Tabs = {},
 		Connections = {},
@@ -1398,40 +1409,8 @@ function Window:_buildSidebar(main, player)
 	end)
 	self.SearchBox = searchBox
 
-	-- the player: avatar and display name
-	local profile = create("Frame", {
-		Name = "Account",
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(10, 80),
-		Size = UDim2.new(1, -20, 0, 48),
-		ZIndex = 3,
-		Visible = options.ShowProfile ~= false,
-		Parent = sidebar,
-	})
-	local avatar = create("ImageLabel", {
-		BorderSizePixel = 0,
-		AnchorPoint = Vector2.new(0, 0.5),
-		Position = UDim2.new(0, 6, 0.5, 0),
-		Size = UDim2.fromOffset(34, 34),
-		Image = player and ("rbxthumb://type=AvatarHeadShot&id=%d&w=60&h=60"):format(player.UserId) or Library.Assets.LogoSmall,
-		Parent = profile,
-	}, { corner("full") })
-	theme:Bind(avatar, { BackgroundColor3 = "Control" })
-	local displayName = create("TextLabel", {
-		BackgroundTransparency = 1,
-		Position = UDim2.fromOffset(50, 0),
-		Size = UDim2.new(1, -56, 1, 0),
-		Text = player and player.DisplayName or "Guest",
-		FontFace = Fonts.SemiBold,
-		TextSize = 14,
-		TextXAlignment = Enum.TextXAlignment.Left,
-		TextTruncate = Enum.TextTruncate.AtEnd,
-		Parent = profile,
-	})
-	theme:Bind(displayName, { TextColor3 = "Text" })
-
 	-- navigation
-	local navTop = options.ShowProfile ~= false and 136 or 84
+	local navTop = 84
 	local nav = create("ScrollingFrame", {
 		Name = "Navigation",
 		BackgroundTransparency = 1,
@@ -1447,7 +1426,7 @@ function Window:_buildSidebar(main, player)
 	}, { list(2) })
 	self.NavItems = nav
 
-	-- footer: the fihOS mark and version
+	-- footer: the fihOS mark
 	local footer = create("Frame", {
 		Name = "Footer",
 		BackgroundTransparency = 1,
@@ -1459,7 +1438,7 @@ function Window:_buildSidebar(main, player)
 	})
 	create("ImageLabel", {
 		BackgroundTransparency = 1,
-		Image = options.Logo or Library.Assets.LogoSmall,
+		Image = BRAND.LogoSmall,
 		ScaleType = Enum.ScaleType.Fit,
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.fromScale(0, 0.5),
@@ -1471,20 +1450,14 @@ function Window:_buildSidebar(main, player)
 		RichText = true,
 		Position = UDim2.fromOffset(22, 0),
 		Size = UDim2.new(1, -22, 1, 0),
-		Text = self.Title,
+		Text = BRAND.Name,
 		FontFace = Fonts.SemiBold,
 		TextSize = 12,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		Parent = footer,
 	})
-	-- the window title, plus an optional muted Subtitle (no version number)
-	local subtitle = options.Subtitle
 	local function paintFooter()
-		local extra = ""
-		if subtitle and subtitle ~= "" then
-			extra = ('  <font color="#%s">%s</font>'):format(theme.Values.Muted:ToHex(), subtitle)
-		end
-		footerText.Text = self.Title .. extra .. (theme.Name == "Halloween" and "  \u{1F383}" or "")
+		footerText.Text = BRAND.Name .. (theme.Name == "Halloween" and "  \u{1F383}" or "")
 	end
 	theme:Bind(footerText, { TextColor3 = "SubText" })
 	paintFooter()
@@ -1655,19 +1628,19 @@ function Window:_buildIsland(player)
 	local pill = create("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, ISLAND_HEIGHT), Parent = body })
 	fadeable(compact, create("ImageLabel", {
 		BackgroundTransparency = 1,
-		Image = options.Logo or Library.Assets.LogoSmall,
+		Image = BRAND.LogoSmall,
 		ScaleType = Enum.ScaleType.Fit,
 		AnchorPoint = Vector2.new(0, 0.5),
 		Position = UDim2.new(0, 11, 0.5, 0),
 		Size = UDim2.fromOffset(22, 22),
 		Parent = pill,
 	}))
-	local titleWidth = measure(self.Title, Fonts.SemiBold, 13)
+	local titleWidth = measure(BRAND.Name, Fonts.SemiBold, 13)
 	local pillTitle = fadeable(compact, create("TextLabel", {
 		BackgroundTransparency = 1,
 		Position = UDim2.fromOffset(40, 0),
 		Size = UDim2.new(0, titleWidth + 4, 1, 0),
-		Text = self.Title,
+		Text = BRAND.Name,
 		FontFace = Fonts.SemiBold,
 		TextSize = 13,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -1727,32 +1700,73 @@ function Window:_buildIsland(player)
 		theme:Bind(label, { TextColor3 = token })
 		return fadeable(card, label)
 	end
-	local avatar = fadeable(card, create("ImageLabel", {
+	-- the experience you're in: its icon, its name and its creator. Groups and
+	-- users with Roblox's verified badge get the blue check after their name.
+	local gameIcon = fadeable(card, create("ImageLabel", {
 		BorderSizePixel = 0,
 		Position = UDim2.fromOffset(16, 16),
 		Size = UDim2.fromOffset(44, 44),
-		Image = player and ("rbxthumb://type=AvatarHeadShot&id=%d&w=100&h=100"):format(player.UserId) or Library.Assets.LogoSmall,
+		Image = game.GameId ~= 0 and ("rbxthumb://type=GameIcon&id=%d&w=150&h=150"):format(game.GameId) or BRAND.LogoSmall,
+		ScaleType = Enum.ScaleType.Crop,
 		Parent = panel,
 	}, { corner(10) }))
-	theme:Bind(avatar, { BackgroundColor3 = "IslandChip" })
-	text({
+	theme:Bind(gameIcon, { BackgroundColor3 = "IslandChip" })
+	local gameName = text({
 		Position = UDim2.fromOffset(72, 19),
 		Size = UDim2.fromOffset(150, 18),
-		Text = player and player.DisplayName or self.Title,
+		Text = game.PlaceId ~= 0 and "Loading..." or "Roblox Studio",
 		FontFace = Fonts.SemiBold,
 		TextSize = 15,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, "IslandText")
-	text({
+	local CREATOR_MAX = 150
+	local creatorName = text({
 		Position = UDim2.fromOffset(72, 40),
-		Size = UDim2.fromOffset(150, 14),
-		Text = string.upper(options.IslandSubtitle or self.Title),
+		Size = UDim2.fromOffset(CREATOR_MAX, 14),
+		Text = game.PlaceId ~= 0 and "" or "UNPUBLISHED PLACE",
 		FontFace = Fonts.Medium,
 		TextSize = 11,
 		TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd,
 	}, "IslandSub")
+	local verified = fadeable(card, create("Frame", {
+		Name = "Verified",
+		Visible = false,
+		BorderSizePixel = 0,
+		BackgroundColor3 = Color3.fromRGB(0, 132, 255),
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.fromOffset(72, 47),
+		Size = UDim2.fromOffset(12, 12),
+		Parent = panel,
+	}, { corner("full") }))
+	fadeable(card, icon("check", 8, {
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.5),
+		ImageColor3 = Color3.new(1, 1, 1),
+		Parent = verified,
+	}))
+	if game.PlaceId ~= 0 then
+		task.spawn(function()
+			local ok, info = pcall(MarketplaceService.GetProductInfo, MarketplaceService, game.PlaceId, Enum.InfoType.Asset)
+			if not gameName.Parent then
+				return
+			end
+			if not ok or type(info) ~= "table" then
+				gameName.Text = game.Name
+				return
+			end
+			gameName.Text = info.Name or game.Name
+			local creator = type(info.Creator) == "table" and info.Creator or {}
+			local label = string.upper(creator.Name or "")
+			local isVerified = creator.HasVerifiedBadge == true
+			local width = math.min(measure(label, Fonts.Medium, 11), CREATOR_MAX - (isVerified and 16 or 0))
+			creatorName.Text = label
+			creatorName.Size = UDim2.fromOffset(width + 2, 14)
+			verified.Position = UDim2.fromOffset(72 + width + 5, 47)
+			verified.Visible = isVerified
+		end)
+	end
 	self.IslandTimer = text({
 		AnchorPoint = Vector2.new(1, 0),
 		Position = UDim2.new(1, -16, 0, 16),
@@ -2081,7 +2095,7 @@ function Window:_buildMorph()
 	self.MorphLogo = create("ImageLabel", {
 		Name = "Logo",
 		BackgroundTransparency = 1,
-		Image = self.Options.Logo or Library.Assets.LogoMedium,
+		Image = BRAND.LogoMedium,
 		ScaleType = Enum.ScaleType.Fit,
 		AnchorPoint = Vector2.new(0.5, 0.5),
 		Position = UDim2.fromScale(0.5, 0.5),
@@ -3101,7 +3115,7 @@ function Window:Notify(options)
 
 	create("ImageLabel", {
 		BackgroundTransparency = 1,
-		Image = options.Icon or self.Options.Logo or Library.Assets.LogoSmall,
+		Image = options.Icon or BRAND.LogoSmall,
 		ScaleType = Enum.ScaleType.Fit,
 		Position = UDim2.fromOffset(13, 13),
 		Size = UDim2.fromOffset(28, 28),
@@ -3118,7 +3132,7 @@ function Window:Notify(options)
 	local title = create("TextLabel", {
 		BackgroundTransparency = 1,
 		Size = UDim2.new(1, -40, 1, 0),
-		Text = options.Title or self.Title,
+		Text = options.Title or BRAND.Name,
 		FontFace = Fonts.SemiBold,
 		TextSize = 14,
 		TextXAlignment = Enum.TextXAlignment.Left,
@@ -5266,7 +5280,7 @@ function Window:AddConfigTab(options)
 	}, 4)
 	autoToggle = configs:AddToggle({
 		Title = "Load at launch",
-		Description = "Loads the selected configuration when " .. self.Title .. " starts",
+		Description = "Loads the selected configuration when " .. BRAND.Name .. " starts",
 		Track = false,
 		Callback = function(on)
 			local name = picker.Value
@@ -5296,4 +5310,3 @@ end
 Window.AddSettingsTab = Window.AddConfigTab -- older name
 
 return Library
-
