@@ -3,7 +3,6 @@
 local fihOS = loadstring(game:HttpGet("https://raw.githubusercontent.com/YOUR_NAME/fihOS/main/fihOS.lua"))()
 
 local Window = fihOS:CreateWindow({
-	Title = "fihOS",
 	ToggleKey = Enum.KeyCode.RightControl,
 })
 
