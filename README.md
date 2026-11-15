@@ -52,7 +52,6 @@ local fihOS = require(game:GetService("ReplicatedStorage"):WaitForChild("fihOS")
 
 ```lua
 local Window = fihOS:CreateWindow({
-	Title = "fihOS",
 	ToggleKey = Enum.KeyCode.RightControl,
 })
 
@@ -94,20 +93,17 @@ local Window = fihOS:CreateWindow(options)
 
 | Option | Type | Default | What it does |
 |---|---|---|---|
-| `Title` | string | `"fihOS"` | Shown in the island, the sidebar footer and notifications |
-| `Subtitle` | string | none | Muted text after the title in the sidebar footer |
 | `Size` | Vector2 / UDim2 | `780 × 540` | Window size before scaling |
 | `Theme` | string | `"Onyx"` | Any theme name (see [Themes](#themes)) |
 | `Accent` | Color3 | the theme's own | Accent colour |
 | `Colors` | table | none | Override any theme colour, e.g. `{ Window = Color3.fromRGB(16, 16, 18) }` |
 | `ToggleKey` | KeyCode | `RightControl` | Opens and closes the window |
 | `StartOpen` | boolean | `false` | Open the window straight away instead of showing the island |
-| `ShowProfile` | boolean | `true` | Show the player's avatar and name in the sidebar |
-| `Logo` | string | fihOS logo | Image id for the island, footer and notifications |
-| `IslandSubtitle` | string | `Title` | Small caps line under the player name in the expanded island |
 | `ConfigFolder` | string | `"fihOS"` | Folder in the executor workspace for configs |
 | `Name` | string | `"fihOS"` | ScreenGui name. A window with the same name is replaced cleanly |
 | `Parent` | Instance | `gethui()` or PlayerGui | Where the ScreenGui goes |
+
+The fihOS name and logo are fixed and can't be changed from a script. When you expand the island, it shows the game you're in: its icon, its name, and the user or group that made it. Creators with Roblox's verified badge get a blue check.
 
 **Methods**
 
