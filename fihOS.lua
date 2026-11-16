@@ -4665,9 +4665,13 @@ function Section:AddSegmented(options)
 	end
 	local width = segmentWidth * count + 4
 	local hasTitle = options.Title and options.Title ~= ""
-	local row = self:_row(options, rowHeight(options))
+	local hasDescription = options.Description and options.Description ~= ""
+	local baseHeight = rowHeight(options)
+	local row = self:_row(options, baseHeight)
+	local title, description
 	if hasTitle then
-		self:_text(row, options, width)
+		title = self:_text(row, options, width)
+		description = row:FindFirstChild("Description")
 	end
 	local track = create("Frame", {
 		BorderSizePixel = 0,
@@ -4679,11 +4683,20 @@ function Section:AddSegmented(options)
 	theme:Bind(track, { BackgroundColor3 = "Line", BackgroundTransparency = function(c)
 		return c.Line == Color3.new(1, 1, 1) and 0.92 or 0.94
 	end })
+	-- segments are laid out in fractions of this inner strip, so the control can
+	-- shrink or stretch with the row instead of overflowing it
+	local inner = create("Frame", {
+		Name = "Segments",
+		BackgroundTransparency = 1,
+		Position = UDim2.fromOffset(2, 0),
+		Size = UDim2.new(1, -4, 1, 0),
+		Parent = track,
+	})
 	local indicator = create("Frame", {
 		BorderSizePixel = 0,
-		Position = UDim2.fromOffset(2, 2),
-		Size = UDim2.new(0, segmentWidth, 1, -4),
-		Parent = track,
+		Position = UDim2.new(0, 0, 0, 2),
+		Size = UDim2.new(1 / count, 0, 1, -4),
+		Parent = inner,
 	}, { corner(5) })
 	theme:Bind(indicator, { BackgroundColor3 = "Segment" })
 	theme:Bind(stroke(indicator), { Color = Color3.new(0, 0, 0), Transparency = function(c)
@@ -4697,9 +4710,9 @@ function Section:AddSegmented(options)
 		local line = create("Frame", {
 			BorderSizePixel = 0,
 			AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.new(0, 2 + i * segmentWidth, 0.5, 0),
+			Position = UDim2.new(i / count, 0, 0.5, 0),
 			Size = UDim2.fromOffset(1, 12),
-			Parent = track,
+			Parent = inner,
 		})
 		theme:Bind(line, { BackgroundColor3 = "Line", BackgroundTransparency = "BorderT" })
 		separators[i] = line
@@ -4708,7 +4721,7 @@ function Section:AddSegmented(options)
 	local labels = {}
 	local function render(instant)
 		local index = table.find(items, segmented.Value) or 1
-		local position = UDim2.fromOffset(2 + (index - 1) * segmentWidth, 2)
+		local position = UDim2.new((index - 1) / count, 0, 0, 2)
 		if instant then
 			indicator.Position = position
 		else
@@ -4738,13 +4751,14 @@ function Section:AddSegmented(options)
 			Name = tostring(item),
 			AutoButtonColor = false,
 			BackgroundTransparency = 1,
-			Position = UDim2.fromOffset(2 + (index - 1) * segmentWidth, 0),
-			Size = UDim2.new(0, segmentWidth, 1, 0),
+			Position = UDim2.fromScale((index - 1) / count, 0),
+			Size = UDim2.fromScale(1 / count, 1),
 			Text = tostring(item),
 			FontFace = Fonts.Medium,
 			TextSize = 13,
+			TextTruncate = Enum.TextTruncate.AtEnd,
 			ZIndex = 3,
-			Parent = track,
+			Parent = inner,
 		})
 		theme:Bind(button, { TextColor3 = function(c)
 			return segmented.Value == item and c.Text or c.SubText
@@ -4757,6 +4771,73 @@ function Section:AddSegmented(options)
 		end)
 	end
 	render(true)
+
+	-- Layout: title on the left and the control on the right when both fit;
+	-- otherwise (narrow columns) the title goes on top and the control runs the
+	-- full width of the row underneath it.
+	local titleNeed = 0
+	if hasTitle then
+		titleNeed = measure(options.Title, Fonts.Regular, 14)
+		if hasDescription then
+			titleNeed = math.max(titleNeed, math.min(measure(options.Description, Fonts.Regular, 12), 120))
+		end
+		titleNeed = math.min(titleNeed, 140) + 12
+	end
+	local function logicalWidth()
+		-- AbsoluteSize includes every UIScale above the row; undo them
+		local scale = 1
+		local node = row.Parent
+		while node do
+			local uiScale = node:FindFirstChildOfClass("UIScale")
+			if uiScale then
+				scale *= uiScale.Scale
+			end
+			node = node.Parent
+		end
+		return row.AbsoluteSize.X / math.max(scale, 0.01)
+	end
+	local lastMode, lastWidth
+	local function layout()
+		local available = logicalWidth()
+		if available < 1 then
+			return -- not on screen yet; laid out once it gets a size
+		end
+		local inline = 12 + titleNeed + width + 12 <= available
+		local mode = (inline or not hasTitle) and "inline" or "stacked"
+		local trackWidth = math.min(width, available - 24)
+		if mode == lastMode and (mode == "stacked" or trackWidth == lastWidth) then
+			return
+		end
+		lastMode, lastWidth = mode, trackWidth
+		if mode == "inline" then
+			row.Size = UDim2.new(1, 0, 0, baseHeight)
+			track.AnchorPoint = Vector2.new(1, 0.5)
+			track.Position = UDim2.new(1, -12, 0.5, 0)
+			track.Size = UDim2.fromOffset(trackWidth, 26)
+			if title then
+				local reserve = -(24 + trackWidth + 12)
+				title.Position = hasDescription and UDim2.fromOffset(12, 10) or UDim2.new(0, 12, 0.5, -9)
+				title.Size = UDim2.new(1, reserve, 0, 18)
+				if description then
+					description.Size = UDim2.new(1, reserve, 0, 15)
+				end
+			end
+		else
+			local top = hasDescription and 52 or 34
+			row.Size = UDim2.new(1, 0, 0, top + 26 + 10)
+			track.AnchorPoint = Vector2.new(0, 0)
+			track.Position = UDim2.fromOffset(12, top)
+			track.Size = UDim2.new(1, -24, 0, 26)
+			title.Position = UDim2.fromOffset(12, 10)
+			title.Size = UDim2.new(1, -24, 0, 18)
+			if description then
+				description.Size = UDim2.new(1, -24, 0, 15)
+			end
+		end
+	end
+	row:GetPropertyChangedSignal("AbsoluteSize"):Connect(layout)
+	layout()
+
 	return register(self.Window, options, segmented)
 end
 
