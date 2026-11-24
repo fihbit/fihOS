@@ -1897,14 +1897,12 @@ function Window:_buildIsland(player)
 	local hovering = false
 	body.MouseEnter:Connect(function()
 		hovering = true
-		if self.IslandMode == "Hover" then
-			self:_islandExpand(true)
-		end
+		self:_islandExpand(true)
 	end)
 	body.MouseLeave:Connect(function()
 		hovering = false
 		task.delay(0.12, function()
-			if not hovering and self.IslandMode == "Hover" then
+			if not hovering then
 				self:_islandExpand(false)
 			end
 		end)
@@ -1940,11 +1938,10 @@ function Window:_islandShow(show)
 	local holder = self.IslandHolder
 	local token = {}
 	self.IslandToken = token
-	local hidden = self.IslandMode == "Hidden" and not isTouchOnly()
-	if show and not hidden then
+	if show then
 		holder.Visible = true
 		tween(holder, { Position = UDim2.new(0.5, 0, 0, 10) }, 0.5)
-		self:_islandExpand(self.IslandMode == "Expanded")
+		self:_islandExpand(false)
 	else
 		self:_islandExpand(false)
 		tween(holder, { Position = UDim2.new(0.5, 0, 0, -60 - (self.IslandExpanded and ISLAND_CARD.Y or 0)) }, 0.3)
@@ -1956,19 +1953,11 @@ function Window:_islandShow(show)
 	end
 end
 
-function Window:SetIslandMode(mode)
-	local modes = {
-		["Expand on hover"] = "Hover",
-		["Always expanded"] = "Expanded",
-		["Compact"] = "Compact",
-		["Hidden"] = "Hidden",
-	}
-	self.IslandMode = modes[mode] or mode
+function Window:SetIslandMode(_mode)
+	self.IslandMode = "Hover"
 	if not self.IsOpen then
 		self:_islandShow(true)
-		if self.IslandMode ~= "Hidden" then
-			self:_islandExpand(self.IslandMode == "Expanded")
-		end
+		self:_islandExpand(false)
 	end
 end
 
@@ -2178,13 +2167,6 @@ function Window:_islandPlace()
 	fade(self.CompactFade, false, 0)
 	holder.Visible = true
 	fade(self.CompactFade, true, 0.25)
-	if self.IslandMode == "Expanded" then
-		task.delay(0.15, function()
-			if not self.IsOpen then
-				self:_islandExpand(true)
-			end
-		end)
-	end
 end
 
 function Window:_bumpIsland()
@@ -2284,7 +2266,7 @@ function Window:Close()
 	self.VisibilityToken = token
 	self:ClosePopover()
 	local morphTime = 0.46
-	local toIsland = not (self.IslandMode == "Hidden" and not isTouchOnly())
+	local toIsland = true
 
 	if not self.Root.Visible and not self.Morph.Visible then
 		-- toggled back before the open animation began: just restore the island
